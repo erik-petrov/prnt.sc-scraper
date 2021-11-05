@@ -107,13 +107,20 @@ func downloadFile(URL, fileName string) error {
 
 func main() {
 	for i := 0; i < 200; i++ {
+		//makes a folder for the images in the files directory
 		os.MkdirAll("./imgs/", os.ModePerm)
+
 		var fileName string
 		var downloaded bool
+
+		//generates the random id and creates the scraper
 		c := colly.NewCollector()
 		ID := genID()
 		println(ID)
+
+		//if the scraper find an element with the id given, this function starts
 		c.OnHTML("#screenshot-image", func(e *colly.HTMLElement) {
+			//getting the images link, and splitting it to get the file name
 			split := strings.Split(e.Attr("src"), "/")
 			fileName = split[len(split)-1]
 			err := downloadFile(e.Attr("src"), fileName)
@@ -127,6 +134,8 @@ func main() {
 		if !downloaded {
 			continue
 		}
+
+		//opens the downloaded image
 		fileData, err := ioutil.ReadFile(filepath.Join("./imgs/", fileName))
 		if err != nil {
 			log.Println("Couldn't open the file.")
@@ -134,11 +143,15 @@ func main() {
 			continue
 
 		}
+
+		//creates the client for request
 		httpClient := initHTTPClient(2000, 2000)
 		req, err := buildRequest("http://localhost:8080/sync", "http://localhost:8080/sync", fileData)
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		//makes the request to the server containing the image
 		req.Header.Set("Content-Type", "application/json")
 		response, err := httpClient.Do(req)
 		if response != nil {
@@ -147,6 +160,8 @@ func main() {
 		if err != nil {
 			log.Fatal(err)
 		}
+
+		//gets the request and if its ok, proceeds
 		responseBody, err := ioutil.ReadAll(response.Body)
 		if err != nil {
 			log.Fatal(err)
@@ -154,6 +169,8 @@ func main() {
 		if response.StatusCode != http.StatusOK {
 			log.Fatal("Request failed")
 		}
+
+		//parsing the request, so we can check if the image is safe or not
 		d := json.NewDecoder(strings.NewReader(string(responseBody)))
 		d.UseNumber()
 		var answ interface{}
