@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"log"
@@ -14,7 +15,6 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"reflect"
 	"strings"
 	"time"
 
@@ -102,77 +102,75 @@ func downloadFile(URL, fileName string) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
 func main() {
-	//for i := 0; i < 20; i++ {
-	os.MkdirAll("./imgs/", os.ModePerm)
-	var fileName string
-	c := colly.NewCollector()
-	ID := genID()
-	//var downloaded bool
-	println(ID)
-	c.OnHTML("#screenshot-image", func(e *colly.HTMLElement) {
-		split := strings.Split(e.Attr("src"), "/")
-		fileName = split[len(split)-1]
-		err := downloadFile(e.Attr("src"), fileName)
-		//downloaded = true
+	for i := 0; i < 200; i++ {
+		os.MkdirAll("./imgs/", os.ModePerm)
+		var fileName string
+		var downloaded bool
+		c := colly.NewCollector()
+		ID := genID()
+		println(ID)
+		c.OnHTML("#screenshot-image", func(e *colly.HTMLElement) {
+			split := strings.Split(e.Attr("src"), "/")
+			fileName = split[len(split)-1]
+			err := downloadFile(e.Attr("src"), fileName)
+			downloaded = true
+			if err != nil {
+				downloaded = false
+				fmt.Println(err)
+			}
+		})
+		c.Visit("https://prnt.sc/" + ID)
+		if !downloaded {
+			continue
+		}
+		fileData, err := ioutil.ReadFile(filepath.Join("./imgs/", fileName))
+		if err != nil {
+			log.Println("Couldn't open the file.")
+			log.Fatal(err)
+			continue
+
+		}
+		httpClient := initHTTPClient(2000, 2000)
+		req, err := buildRequest("http://localhost:8080/sync", "http://localhost:8080/sync", fileData)
 		if err != nil {
 			log.Fatal(err)
-			//downloaded = false
 		}
-	})
-	// if downloaded {
-	// 	//continue
-	// }
-	c.Visit("https://prnt.sc/" + ID)
-	fileData, err := ioutil.ReadFile(filepath.Join("./imgs/", fileName))
-	if err != nil {
-		log.Println("Couldn't open the file.")
-		log.Fatal(err)
-		//continue
-
+		req.Header.Set("Content-Type", "application/json")
+		response, err := httpClient.Do(req)
+		if response != nil {
+			defer response.Body.Close()
+		}
+		if err != nil {
+			log.Fatal(err)
+		}
+		responseBody, err := ioutil.ReadAll(response.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		if response.StatusCode != http.StatusOK {
+			log.Fatal("Request failed")
+		}
+		d := json.NewDecoder(strings.NewReader(string(responseBody)))
+		d.UseNumber()
+		var answ interface{}
+		if err := d.Decode(&answ); err != nil {
+			log.Fatal(err)
+		}
+		ans, _ := answ.(map[string]interface{})
+		an, _ := ans["prediction"].(map[string]interface{})
+		a, _ := an["file_name"].(map[string]interface{})
+		f, _ := a["safe"].(json.Number)
+		percentage, _ := f.Float64()
+		fmt.Println(percentage)
+		if percentage < 0.4 && percentage != 0 {
+			fmt.Println("Found nudity, saving.")
+		} else {
+			fmt.Println("Not nudity, deleting.")
+			os.Remove(filepath.Join("./imgs/", fileName))
+		}
 	}
-	httpClient := initHTTPClient(2000, 2000)
-	req, err := buildRequest("http://localhost:8080/sync", "http://localhost:8080/sync", fileData)
-	if err != nil {
-		log.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/json")
-	response, err := httpClient.Do(req)
-	if response != nil {
-		defer response.Body.Close()
-	}
-	if err != nil {
-		log.Fatal(err)
-	}
-	responseBody, err := ioutil.ReadAll(response.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
-	if response.StatusCode != http.StatusOK {
-		log.Fatal("Request failed")
-	}
-	d := json.NewDecoder(strings.NewReader(string(responseBody)))
-	d.UseNumber()
-	var answ interface{}
-	if err := d.Decode(&answ); err != nil {
-		log.Fatal(err)
-	}
-	ans, _ := answ.(map[string]interface{})
-	an, _ := ans["prediction"].(map[string]interface{})
-	a, _ := an["file_name"].(map[string]interface{})
-	println(reflect.TypeOf(a["safe"]))
-	//num, _ := a["safe"].(float64)
-	// println(num)
-	// if num > 0.2 {
-	// 	fmt.Println("Found nudity, saving.")
-	// } else {
-	// 	fmt.Println("Not nudity, deleting.")
-	// 	os.Remove(filepath.Join("./imgs/", fileName))
-	// }
-
-	//}
 }
