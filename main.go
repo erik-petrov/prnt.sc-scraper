@@ -106,7 +106,7 @@ func downloadFile(URL, fileName string) error {
 }
 
 func main() {
-	for i := 0; i < 200; i++ {
+	for i := 0; i < 400; i++ {
 		//makes a folder for the images in the files directory
 		os.MkdirAll("./imgs/", os.ModePerm)
 
@@ -120,14 +120,17 @@ func main() {
 
 		//if the scraper find an element with the id given, this function starts
 		c.OnHTML("#screenshot-image", func(e *colly.HTMLElement) {
-			//getting the images link, and splitting it to get the file name
-			split := strings.Split(e.Attr("src"), "/")
-			fileName = split[len(split)-1]
-			err := downloadFile(e.Attr("src"), fileName)
-			downloaded = true
-			if err != nil {
-				downloaded = false
-				fmt.Println(err)
+			if !strings.Contains(e.Attr("src"), "imgur") {
+				split := strings.Split(e.Attr("src"), ".")
+				fileName = ID + "." + split[len(split)-1]
+				err := downloadFile(e.Attr("src"), fileName)
+				downloaded = true
+				if err != nil {
+					downloaded = false
+					fmt.Println(err)
+				}
+			} else {
+				log.Println("Image not available.")
 			}
 		})
 		c.Visit("https://prnt.sc/" + ID)
