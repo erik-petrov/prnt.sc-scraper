@@ -1,10 +1,10 @@
 # prnt.sc-scraper
 Generates a random prnt.sc screenshot id and checks if its nude.
 
-##Built with
+## Built with
 * [Nudenet](https://github.com/notAI-tech/NudeNet)
 
-##Installation
+## Installation
 
 1. build the docker app
 ```docker run -it -p8080:8080 notaitech/nudenet:classifier
