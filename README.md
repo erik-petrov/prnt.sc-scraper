@@ -7,6 +7,7 @@ Generates a random prnt.sc screenshot id and checks if its nude.
 ## Installation
 
 1. build the docker app
-```docker run -it -p8080:8080 notaitech/nudenet:classifier
-   ```
+```sh
+docker run -it -p8080:8080 notaitech/nudenet:classifier
+```
 2. And run main.go
